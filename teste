@@ -1,0 +1,171 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_CARTAS 100
+#define TAM_CODIGO 10
+#define TAM_NOME 100
+#define NOME_ARQUIVO "cartas_super_trunfo.txt"
+#define ARQUIVO_TEMP "temp.txt"
+
+typedef struct {
+    char estado[3];
+    char codigo[TAM_CODIGO];
+    char nomeCidade[TAM_NOME];
+    int populacao;
+    float area;
+    float pib;
+    int pontosTuristicos;
+} CartaCidade;
+
+void limparBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void cadastrarCarta(CartaCidade* carta) {
+    printf("Digite o Estado (ex: SP): ");
+    scanf("%2s", carta->estado);
+    limparBuffer();
+
+    printf("Digite o Código da Carta: ");
+    fgets(carta->codigo, TAM_CODIGO, stdin);
+    carta->codigo[strcspn(carta->codigo, "\n")] = '\0';
+
+    printf("Digite o Nome da Cidade: ");
+    fgets(carta->nomeCidade, TAM_NOME, stdin);
+    carta->nomeCidade[strcspn(carta->nomeCidade, "\n")] = '\0';
+
+    printf("Digite a População: ");
+    scanf("%d", &carta->populacao);
+
+    printf("Digite a Área em km²: ");
+    scanf("%f", &carta->area);
+
+    printf("Digite o PIB (em bilhões): ");
+    scanf("%f", &carta->pib);
+
+    printf("Digite o número de Pontos Turísticos: ");
+    scanf("%d", &carta->pontosTuristicos);
+
+    limparBuffer();
+}
+
+void salvarCartaEmArquivo(CartaCidade carta) {
+    FILE* arquivo = fopen(NOME_ARQUIVO, "a");
+
+    if (arquivo == NULL) {
+        perror("Erro ao abrir o arquivo");
+        return;
+    }
+
+    fprintf(arquivo, "Estado: %s\n", carta.estado);
+    fprintf(arquivo, "Código: %s\n", carta.codigo);
+    fprintf(arquivo, "Cidade: %s\n", carta.nomeCidade);
+    fprintf(arquivo, "População: %d\n", carta.populacao);
+    fprintf(arquivo, "Área (km²): %.2f\n", carta.area);
+    fprintf(arquivo, "PIB: %.2f\n", carta.pib);
+    fprintf(arquivo, "Pontos Turísticos: %d\n", carta.pontosTuristicos);
+    fprintf(arquivo, "--------------------------\n");
+
+    fclose(arquivo);
+    printf("Carta salva com sucesso!\n");
+}
+
+void listarCartas() {
+    FILE* arquivo = fopen(NOME_ARQUIVO, "r");
+
+    if (arquivo == NULL) {
+        printf("Nenhuma carta cadastrada ainda.\n");
+        return;
+    }
+
+    char linha[256];
+    printf("\n===== CARTAS CADASTRADAS =====\n");
+
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        printf("%s", linha);
+    }
+
+    fclose(arquivo);
+}
+
+void excluirCartaPorCodigo(const char* codigoBuscado) {
+    FILE* original = fopen(NOME_ARQUIVO, "r");
+    FILE* temp = fopen(ARQUIVO_TEMP, "w");
+
+    if (original == NULL || temp == NULL) {
+        perror("Erro ao abrir arquivos");
+        return;
+    }
+
+    char linha[256];
+    int copiar = 1;
+    int encontrou = 0;
+
+    while (fgets(linha, sizeof(linha), original) != NULL) {
+        if (strncmp(linha, "Código: ", 8) == 0) {
+            if (strstr(linha, codigoBuscado) != NULL) {
+                copiar = 0;
+                encontrou = 1;
+                continue;
+            } else {
+                copiar = 1;
+            }
+        }
+
+        if (copiar)
+            fputs(linha, temp);
+    }
+
+    fclose(original);
+    fclose(temp);
+
+    remove(NOME_ARQUIVO);
+    rename(ARQUIVO_TEMP, NOME_ARQUIVO);
+
+    if (encontrou)
+        printf("Carta com código \"%s\" excluída com sucesso.\n", codigoBuscado);
+    else
+        printf("Carta com código \"%s\" não encontrada.\n", codigoBuscado);
+}
+
+int main() {
+    int opcao;
+    CartaCidade novaCarta;
+    char codigoBusca[TAM_CODIGO];
+
+    do {
+        printf("\nMENU SUPER TRUNFO CIDADES\n");
+        printf("1. Nova carta\n");
+        printf("2. Listar as cartas\n");
+        printf("3. Excluir carta por código\n");
+        printf("4. Sair\n");
+        printf("Escolha uma opção: ");
+        scanf("%d", &opcao);
+        limparBuffer();
+
+        switch (opcao) {
+            case 1:
+                cadastrarCarta(&novaCarta);
+                salvarCartaEmArquivo(novaCarta);
+                break;
+            case 2:
+                listarCartas();
+                break;
+            case 3:
+                printf("Digite o código da carta que deseja excluir: ");
+                fgets(codigoBusca, TAM_CODIGO, stdin);
+                codigoBusca[strcspn(codigoBusca, "\n")] = '\0';
+                excluirCartaPorCodigo(codigoBusca);
+                break;
+            case 4:
+                printf("Encerrando o programa...\n");
+                break;
+            default:
+                printf("Opção inválida. Tente novamente.\n");
+        }
+    } while (opcao != 4);
+
+    return 0;
+}
